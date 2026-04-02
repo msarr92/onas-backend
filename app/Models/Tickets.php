@@ -16,7 +16,7 @@ class Tickets extends Model
         'sla_due_at',
         'dlgas_id',
         'telephone',
-        'source_demande', 'prenom', 'nom', 'email', 'adresse',
+        'source_demande', 'prenom', 'nom', 'email', 'adresse', 'statut_solution',
         'detail', 'user_id', 'entite_id', 'element_id', 'observateur_id'
     ];
 

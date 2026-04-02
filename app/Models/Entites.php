@@ -6,9 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Entites extends Model
 {
-      protected $fillable = ['nom', 'entite_principale_id'];
+    protected $fillable = ['nom', 'entite_principale_id'];
 
-     public function parent()
+    public function parent()
     {
         return $this->belongsTo(Entites::class, 'entite_principale_id');
     }
@@ -20,12 +20,11 @@ class Entites extends Model
 
     public function utilisateurs()
     {
-        return $this->hasMany(User::class);
+        return $this->belongsToMany(User::class, 'entite_user', 'entite_id', 'user_id')->withTimestamps();
     }
 
     public function tickets()
     {
         return $this->hasMany(Tickets::class);
     }
-
 }

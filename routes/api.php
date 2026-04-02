@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\DiscussionController;
 use App\Http\Controllers\ElementController;
 use App\Http\Controllers\EntiteController;
+use App\Http\Controllers\NotificationsController;
 use App\Http\Controllers\PusherAuthController;
 use App\Http\Controllers\TicketController;
 use App\Http\Controllers\UserController;
@@ -35,6 +36,7 @@ Route::delete('entites/{id}/force', [EntiteController::class, 'supprimerEntiteFo
 Route::put('entites/{id}', [EntiteController::class, 'modifierEntite']);
 Route::middleware('auth:api')->group(function () {
     Route::get('entites/{id}', [EntiteController::class, 'showHierarchy']);
+    Route::get('/mes-sous-entites', [EntiteController::class, 'mesSousEntites']);
 });
 
 
@@ -67,9 +69,17 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/discussions', [DiscussionController::class, 'envoyerMessage']);
     Route::get('/tickets/{ticketId}/discussions', [DiscussionController::class, 'index']);
     Route::post('/broadcasting/auth', [PusherAuthController::class, 'authenticate']);
+    Route::post('/discussions/{discussion}/accepter', [DiscussionController::class, 'accepterSolution']);
+    Route::post('/discussions/{discussion}/refuser', [DiscussionController::class, 'refuserSolution']);
 });
 Route::get('/tickets/verifier-sla/{id}', [TicketController::class, 'verifierSLA']);
 
 //Route::middleware('auth:api')->get('/tickets/statistiques', [TicketController::class, 'statistiques']);
 
 Route::get('/dashboard/statistiques', [TicketController::class,'statistiquesGenerales']);
+
+
+
+Route::middleware('auth:api')->get('/notifications', [NotificationsController::class, 'mesNotifications']);
+
+

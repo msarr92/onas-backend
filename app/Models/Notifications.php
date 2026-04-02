@@ -9,7 +9,9 @@ class Notifications extends Model
 
      protected $fillable = ['user_id', 'ticket_id', 'type', 'contenu', 'lu'];
 
-
+     protected $casts = [
+        'lu' => 'boolean'
+    ];
 
      public function utilisateur()
     {

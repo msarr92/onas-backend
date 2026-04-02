@@ -11,13 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('entites', function (Blueprint $table) {
+        Schema::create('entite_user', function (Blueprint $table) {
             $table->id();
-            $table->string('nom');
-                 // Hiérarchie ONAS → Réseau ONAS → Ville
-            $table->foreignId('entite_principale_id')->nullable()
-                ->references('id')->on('entites')
-                ->nullOnDelete();
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
+            $table->foreignId('entite_id')->constrained('entites')->cascadeOnDelete();
             $table->timestamps();
         });
     }
@@ -27,6 +24,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('entites');
+        Schema::dropIfExists('entite_user');
     }
 };

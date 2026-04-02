@@ -17,7 +17,7 @@ class UserController extends Controller
     /**
      * Liste des utilisateurs avec statut en ligne et dernière connexion
      */
-    public function ListUsers(Request $request): JsonResponse
+  public function ListUsers(Request $request): JsonResponse
 {
     try {
 
@@ -31,7 +31,7 @@ class UserController extends Controller
         }
 
         $query = User::with([
-            'entite:id,nom'
+            'entites:id,nom'
         ])
         ->select(
             'id',
@@ -42,7 +42,6 @@ class UserController extends Controller
             'telephone',
             'profil',
             'statut',
-            'entite_id',
             'created_at',
             'derniere_connexion'
         );
@@ -59,7 +58,8 @@ class UserController extends Controller
             ->pluck('profil');
 
         // récupérer les utilisateurs dlgas
-        $usersDlga = User::select(
+        $usersDlga = User::with('entites:id,nom')
+            ->select(
                 'id',
                 'nom',
                 'prenom',

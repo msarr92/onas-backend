@@ -8,7 +8,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Tymon\JWTAuth\Contracts\JWTSubject;
 
-    class User extends Authenticatable implements JWTSubject
+class User extends Authenticatable implements JWTSubject
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory, Notifiable;
@@ -19,8 +19,16 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
      * @var list<string>
      */
     protected $fillable = [
-        'nom', 'prenom', 'username', 'email', 'profil',
-        'password', 'derniere_connexion', 'entite_id', 'statut', 'telephone'
+        'nom',
+        'prenom',
+        'username',
+        'email',
+        'profil',
+        'password',
+        'derniere_connexion',
+        'entite_id',
+        'statut',
+        'telephone'
     ];
 
     /**
@@ -47,9 +55,9 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
     }
 
 
-     public function entite()
+    public function entites()
     {
-        return $this->belongsTo(Entites::class, 'entite_id');
+        return $this->belongsToMany(Entites::class, 'entite_user', 'user_id', 'entite_id')->withTimestamps();
     }
 
     public function tickets()
@@ -67,7 +75,7 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
         return $this->hasMany(Notifications::class);
     }
 
-     /**
+    /**
      * Relation avec le DLGAS (utilisateur assigné)
      */
     public function dlgas()
@@ -95,5 +103,4 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
     {
         return [];
     }
-
 }

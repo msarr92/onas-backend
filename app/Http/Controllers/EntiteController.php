@@ -192,19 +192,22 @@ class EntiteController extends Controller
 
 
     private function calculerNiveauParId(?int $parentId): int
-    {
-        $niveau = 0;
+{
+    $niveau = 0;
 
-        while ($parentId) {
-            $niveau++;
-            $parent = Entites::find($parentId);
-            if (!$parent) break;
+    while ($parentId) {
+        $niveau++;
+        $parent = Entites::find($parentId);
 
-            $parentId = $parent->entite_principale_id;
+        if (!$parent) {
+            break;
         }
 
-        return $niveau;
+        $parentId = $parent->entite_principale_id;
     }
+
+    return $niveau;
+}
 
 
 
@@ -419,6 +422,66 @@ class EntiteController extends Controller
             ], 500);
         }
     }
+
+
+private function getSousEntites($entiteId)
+{
+    $sousEntites = [];
+
+    $enfants = Entites::where('entite_principale_id', $entiteId)->get();
+
+    foreach ($enfants as $enfant) {
+        $sousEntites[] = $enfant;
+
+        $sousEntites = array_merge(
+            $sousEntites,
+            $this->getSousEntites($enfant->id)
+        );
+    }
+
+    return $sousEntites;
+}
+
+public function mesSousEntites(): JsonResponse
+{
+    try {
+
+        $user = auth('api')->user();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Utilisateur non authentifié'
+            ], 401);
+        }
+
+        $entiteUser = Entites::find($user->entite_id);
+
+        if (!$entiteUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Entité utilisateur introuvable'
+            ], 404);
+        }
+
+        $sousEntites = $this->getSousEntites($entiteUser->id);
+
+        return response()->json([
+            'success' => true,
+            'entite_utilisateur' => $entiteUser,
+            'nombre_sous_entites' => count($sousEntites),
+            'sous_entites' => $sousEntites
+        ]);
+
+    } catch (Throwable $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur lors de la récupération des sous-entités',
+            'error' => $e->getMessage()
+        ], 500);
+    }
+}
+
 
 
 

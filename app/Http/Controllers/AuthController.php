@@ -16,51 +16,7 @@ use Throwable;
 class AuthController extends Controller
 {
 
-    // private function generateUsernameAndEmail(string $nom, string $prenom): array
-    // {
-    //     // Nettoyage (supprime caractères spéciaux)
-    //     $nom = strtolower(preg_replace('/[^a-z]/', '', $nom));
-    //     $prenom = strtolower(preg_replace('/[^a-z]/', '', $prenom));
-
-    //     $prenomPart = substr($prenom, 0, 3);
-
-    //     $baseUsername = $nom . '.' . $prenomPart;
-    //     $username = $baseUsername;
-    //     $counter = 1;
-
-    //     // Vérifie unicité
-    //     while (\App\Models\User::where('username', $username)->exists()) {
-    //         $username = $baseUsername . $counter;
-    //         $counter++;
-    //     }
-
-    //     $email = $username . '@onas.sn';
-
-    //     return [
-    //         'username' => $username,
-    //         'email' => $email,
-    //     ];
-    // }
-
-
-    // private function generateUsername(string $nom, string $prenom): string
-    // {
-    //     $nom = strtolower(preg_replace('/[^a-z]/', '', $nom));
-    //     $prenom = strtolower(preg_replace('/[^a-z]/', '', $prenom));
-
-    //     $prenomPart = substr($prenom, 0, 3);
-
-    //     $baseUsername = $nom . '.' . $prenomPart;
-    //     $username = $baseUsername;
-    //     $counter = 1;
-
-    //     while (\App\Models\User::where('username', $username)->exists()) {
-    //         $username = $baseUsername . $counter;
-    //         $counter++;
-    //     }
-
-    //     return $username;
-    // }
+   
 
 
     public function register(Request $request): JsonResponse

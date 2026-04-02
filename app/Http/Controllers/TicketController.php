@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Entites;
 use App\Models\Notifications;
 use App\Models\Tickets;
 use App\Models\User;
@@ -14,92 +15,109 @@ use Throwable;
 class TicketController extends Controller
 {
 
-   public function ajouterTicket(Request $request): JsonResponse
-{
-    $validator = Validator::make($request->all(), [
-        'type' => 'required|string',
-        'categorie' => 'required|string',
-        'urgence' => 'required|string',
-        'source_demande' => 'required|string',
-        'prenom' => 'required|string',
-        'nom' => 'required|string',
-        'email' => 'nullable|email',
-        'telephone' => 'required|string|max:20',
-        'adresse' => 'required|string',
-        'detail' => 'required|string',
-        'element_id' => 'nullable|exists:elements,id',
-        'observateur_id' => 'nullable|exists:users,id',
-        'dlgas_id' => 'nullable|string',
-        'sla_ttr' => 'required|integer|min:3'
-    ]);
 
-    if ($validator->fails()) {
-        return response()->json([
-            'success' => false,
-            'errors' => $validator->errors()
-        ], 422);
-    }
-
-    try {
-
-        $user = auth('api')->user();
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Utilisateur non authentifié.'
-            ], 401);
-        }
-
-        // 🔹 Génération numéro ticket
+    protected function genererNumeroTicket(): string
+    {
         $lastTicket = Tickets::latest('id')->first();
         $nextNumber = $lastTicket ? $lastTicket->id + 1 : 1;
 
-        $numTicket = 'TCK-' . date('Y') . '-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+        return 'TCK-' . date('Y') . '-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+    }
 
-        $ticket = Tickets::create([
-            'num_ticket' => $numTicket,
 
-            'type' => $request->type,
-            'categorie' => $request->categorie,
-            'statut' => 'en_attente',
-            'urgence' => $request->urgence,
-            'date_ouverture' => now(),
 
-            'sla_ttr' => $request->sla_ttr,
-            'sla_started_at' => null,
-            'sla_due_at' => null,
-
-            'source_demande' => $request->source_demande,
-            'prenom' => $request->prenom,
-            'nom' => $request->nom,
-            'email' => $request->email,
-            'telephone' => $request->telephone,
-            'adresse' => $request->adresse,
-            'detail' => $request->detail,
-
-            'user_id' => $user->id,
-            'entite_id' => $user->entite_id,
-            'element_id' => $request->element_id,
-            'observateur_id' => $request->observateur_id,
-            'dlgas_id' => null
+    public function ajouterTicket(Request $request): JsonResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'type' => 'required|string',
+            'categorie' => 'required|string',
+            'urgence' => 'required|string',
+            'source_demande' => 'required|string',
+            'prenom' => 'required|string',
+            'nom' => 'required|string',
+            'email' => 'nullable|email',
+            'telephone' => 'required|string|max:20',
+            'adresse' => 'required|string',
+            'detail' => 'required|string',
+            'element_id' => 'nullable|exists:elements,id',
+            'observateur_id' => 'nullable|exists:users,id',
+            'dlgas_id' => 'nullable|string',
+            'sla_ttr' => 'required|integer|min:3'
         ]);
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Ticket créé avec succès.',
-            'data' => $ticket
-        ], 201);
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'errors' => $validator->errors()
+            ], 422);
+        }
 
-    } catch (Throwable $e) {
+        try {
+            $user = auth('api')->user();
 
-        return response()->json([
-            'success' => false,
-            'message' => 'Erreur lors de la création du ticket.',
-            'error' => $e->getMessage()
-        ], 500);
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non authentifié.'
+                ], 401);
+            }
+
+            //  Génération du numéro de ticket
+            $numTicket = $this->genererNumeroTicket();
+
+            $ticket = Tickets::create([
+                'num_ticket' => $numTicket,
+                'type' => $request->type,
+                'categorie' => $request->categorie,
+                'statut' => 'en_attente',
+                'urgence' => $request->urgence,
+                'date_ouverture' => now(),
+                'sla_ttr' => $request->sla_ttr,
+                'sla_started_at' => null,
+                'sla_due_at' => null,
+                'source_demande' => $request->source_demande,
+                'prenom' => $request->prenom,
+                'nom' => $request->nom,
+                'email' => $request->email,
+                'telephone' => $request->telephone,
+                'adresse' => $request->adresse,
+                'detail' => $request->detail,
+                'user_id' => $user->id,
+                'entite_id' => $user->entite_id,
+                'element_id' => $request->element_id,
+                'observateur_id' => $request->observateur_id,
+                'dlgas_id' => null
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ticket créé avec succès.',
+                'data' => $ticket
+            ], 201);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la création du ticket.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
-}
+
+
+
+    // Fonction récursive pour récupérer les IDs des entités descendantes
+    private function getEntitesDescendantes(int $entiteId): array
+    {
+        $ids = [$entiteId];
+
+        $enfants = Entites::where('entite_principale_id', $entiteId)->pluck('id');
+
+        foreach ($enfants as $enfantId) {
+            $ids = array_merge($ids, $this->getEntitesDescendantes($enfantId));
+        }
+
+        return $ids;
+    }
 
     /**
      * Lister les tickets avec pagination et filtres
@@ -116,24 +134,27 @@ class TicketController extends Controller
                 ], 401);
             }
 
-            // 🔎 Query avec relations
             $query = Tickets::with([
                 'utilisateur:id,nom,prenom,username',
                 'entite:id,nom',
                 'element:id,nom'
             ]);
 
-            //  Si ce n'est pas superadmin ou backoffice → il voit seulement ses tickets
-            // Les profils autorisés à voir tous les tickets
-            $profilsAutorises = ['superadmin', 'backoffice', 'selfservice'];
+            // Profils qui voient tout
+            $profilsAutorises = ['superadmin', 'backoffice'];
 
             if (!in_array($user->profil, $profilsAutorises)) {
-                $query->where('user_id', $user->id);
+
+                // récupérer les entités accessibles
+                $entitesAutorisees = $this->getEntitesDescendantes($user->entite_id);
+
+                $query->whereIn('entite_id', $entitesAutorisees);
             }
 
-            // 📄 Pagination
             $perPage = $request->get('per_page', 5);
-            $tickets = $query->orderBy('created_at', 'desc')
+
+            $tickets = $query
+                ->orderBy('created_at', 'desc')
                 ->paginate($perPage);
 
             return response()->json([
@@ -154,10 +175,11 @@ class TicketController extends Controller
 
 
 
+
+
     public function listerTicketsDlga(Request $request): JsonResponse
     {
         try {
-
             $user = auth('api')->user();
 
             if (!$user) {
@@ -175,23 +197,25 @@ class TicketController extends Controller
                 'dlgas:id,nom,prenom,username'
             ]);
 
-            // 🔹 Si profil consultation → voir ses tickets assignés
-            if ($user->profil === 'consultation') {
+            // 🔹 Si profil consultation ou DLGA → voir tickets de la même entité
+            if (in_array($user->profil, ['consultation'])) {
 
-                $query->where('dlgas_id', $user->id);
+                // Tickets assignés à cet utilisateur OU tickets de son entité
+                $query->where(function ($q) use ($user) {
+                    $q->where('dlgas_id', $user->id)
+                        ->orWhere('entite_id', $user->entite_id);
+                });
             }
-            // 🔹 Si superadmin → voir tous les tickets assignés aux dlgas
+            // 🔹 Superadmin → voir tous les tickets assignés aux DLGAs
             elseif ($user->profil === 'superadmin') {
-
                 $query->whereNotNull('dlgas_id');
             }
-            // 🔹 Autres profils → voir leurs tickets créés
+            // 🔹 Autres profils → voir leurs tickets créés uniquement
             else {
-
                 $query->where('user_id', $user->id);
             }
 
-            // pagination
+            // Pagination
             $perPage = $request->get('per_page', 5);
 
             $tickets = $query
@@ -204,7 +228,6 @@ class TicketController extends Controller
                 'data' => $tickets
             ]);
         } catch (Throwable $e) {
-
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des tickets.',
@@ -214,6 +237,7 @@ class TicketController extends Controller
             ], 500);
         }
     }
+
 
 // public function listerTicketsDlga(Request $request): JsonResponse
 // {
@@ -381,6 +405,7 @@ class TicketController extends Controller
     }
 
 
+
     public function modifierTicket(Request $request, int $id): JsonResponse
     {
         try {
@@ -409,7 +434,6 @@ class TicketController extends Controller
                 !in_array($user->profil, $profilsAutorises)
                 && $ticket->user_id !== $user->id
             ) {
-
                 return response()->json([
                     'success' => false,
                     'message' => 'Vous n\'avez pas le droit de modifier ce ticket.'
@@ -449,33 +473,28 @@ class TicketController extends Controller
 
             $data = $validator->validated();
 
-            // 🎯 Si un DLGAS est assigné
             if (isset($data['dlgas_id'])) {
 
                 $dlgas = User::find($data['dlgas_id']);
 
                 if ($dlgas) {
 
-                    // changer le statut automatiquement
+                    // statut automatique
                     $data['statut'] = 'en_cours';
 
                     if (!$ticket->sla_started_at) {
-
-                        $slaStart = now();
-                        $slaDue = now()->addHours($ticket->sla_ttr);
-
-                        $data['sla_started_at'] = $slaStart;
-                        $data['sla_due_at'] = $slaDue;
+                        $data['sla_started_at'] = now();
+                        $data['sla_due_at'] = now()->addHours($ticket->sla_ttr);
                     }
 
-                    //  création notification avec nom et prénom
-                    // Notifications::create([
-                    //     'user_id' => $dlgas->id,
-                    //     'ticket_id' => $ticket->id,
-                    //     'type' => 'assignation_ticket',
-                    //     'contenu' => "Bonjour {$dlgas->prenom} {$dlgas->nom}, un ticket (#{$ticket->id}) vous a été assigné.",
-                    //     'lu' => false
-                    // ]);
+                    //  Notification synchronisée
+                    Notifications::create([
+                        'user_id' => $dlgas->id,
+                        'ticket_id' => $ticket->id,
+                        'type' => 'STATUS_CHANGED',
+                        'contenu' => "Bonjour {$dlgas->prenom} {$dlgas->nom}, un ticket ({$ticket->num_ticket}) vous a été assigné.",
+                        'lu' => false
+                    ]);
                 }
             }
 
@@ -491,10 +510,12 @@ class TicketController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la modification du ticket.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage() // très utile pour debug
             ], 500);
         }
     }
+
+
 
     public function verifierSLA(int $ticketId): JsonResponse
     {
