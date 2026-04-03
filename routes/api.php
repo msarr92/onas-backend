@@ -27,6 +27,8 @@ Route::get('/users/{id}', [UserController::class, 'afficherUtilisateur']);
 Route::put('/users/{id}', [UserController::class, 'modifierUtilisateur']);
 Route::patch('users/{id}/activer', [UserController::class, 'activerUtilisateur']);
 Route::patch('users/{id}/desactiver', [UserController::class, 'desactiverUtilisateur']);
+Route::delete('/users/{id}', [UserController::class, 'supprimerUtilisateur']);
+Route::get('/users/{id}', [UserController::class, 'showUsers']);
 
 // Route::post('/dlgas', [UserController::class, 'ajouterDLGA']);
 

@@ -83,6 +83,11 @@ class User extends Authenticatable implements JWTSubject
         return $this->belongsTo(User::class, 'dlgas', 'id');
     }
 
+     // Relation one-to-many (si vous gardez entite_id)
+    public function entite()
+    {
+        return $this->belongsTo(Entites::class, 'entite_id');
+    }
 
     /**
      * Get the identifier that will be stored in the subject claim of the JWT.

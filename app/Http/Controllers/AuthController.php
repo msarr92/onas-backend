@@ -16,76 +16,7 @@ use Throwable;
 class AuthController extends Controller
 {
 
-   
 
-
-    public function register(Request $request): JsonResponse
-    {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'required|string|min:2|max:100',
-            'prenom' => 'required|string|min:2|max:100',
-            'email' => 'nullable|email|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'profil' => 'required|in:superadmin,selfservice,backoffice',
-            'entite_id' => 'required|integer|exists:entites,id',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
-        try {
-
-            $data = $validator->validated();
-
-
-
-            $user = DB::transaction(function () use ($data) {
-                return User::create([
-                    'nom' => $data['nom'],
-                    'prenom' => $data['prenom'],
-                    'email' => $data['email'],
-                    'username' => $data['username'],
-                    'profil' => $data['profil'],
-                    'entite_id' => $data['entite_id'],
-                    'password' => Hash::make($data['password']),
-                    'derniere_connexion' => null,
-                    'statut' => 'actif'
-                ]);
-            });
-
-            $token = auth()->guard('api')->login($user);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Utilisateur créé avec succès.',
-                'data' => [
-                    'user' => [
-                        'id' => $user->id,
-                        'nom' => $user->nom,
-                        'prenom' => $user->prenom,
-                        'email' => $user->email,
-                        'username' => $user->username,
-                        'profil' => $user->profil,
-                        'entite_id' => $user->entite_id,
-                        'statut' => $user->statut,
-                    ],
-                    'token' => $token,
-                    'token_type' => 'bearer',
-                    'expires_in' => config('jwt.ttl') * 60
-                ]
-            ], 201);
-        } catch (Throwable $e) {
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur interne serveur.'
-            ], 500);
-        }
-    }
 
    public function refreshToken(): JsonResponse
 {
@@ -95,6 +26,8 @@ class AuthController extends Controller
 
         // Récupérer l'utilisateur actuel
         $user = auth('api')->user();
+
+         $user->load('entites');
 
         return response()->json([
             'success' => true,
@@ -142,6 +75,8 @@ class AuthController extends Controller
             }
 
             $user = auth('api')->user();
+             // Charger les entités de l'utilisateur (relation many-to-many)
+            $user->load('entites');
 
             $user->update([
                 'derniere_connexion' => now()
@@ -158,29 +93,62 @@ class AuthController extends Controller
         }
     }
 
+   /**
+     * Formater l'utilisateur avec toutes ses entités
+     */
+    private function formatUserWithEntities($user): array
+    {
+        // Formater la liste des entités (many-to-many)
+        $entitesList = [];
+        foreach ($user->entites as $entite) {
+            $entitesList[] = [
+                'id' => $entite->id,
+                'nom' => $entite->nom,
+                'code' => $entite->code ?? null,
+                'type' => $entite->type ?? null,
+                'description' => $entite->description ?? null,
+                'parent_id' => $entite->parent_id ?? null,
+                'is_principal' => ($entite->id == $user->entite_id),
+                'created_at' => $entite->created_at,
+                'updated_at' => $entite->updated_at,
+            ];
+        }
+
+        return [
+            'id' => $user->id,
+            'nom' => $user->nom,
+            'prenom' => $user->prenom,
+            'username' => $user->username,
+            'email' => $user->email,
+            'profil' => $user->profil,
+            'entite_id' => $user->entite_id,
+            'statut' => $user->statut,
+            'telephone' => $user->telephone,
+
+            // Entité principale (pour compatibilité)
+            'entite' => $user->entite ? [
+                'id' => $user->entite->id,
+                'nom' => $user->entite->nom
+            ] : (!empty($entitesList) ? $entitesList[0] : null),
+
+            // TOUTES les entités (depuis la table entite_user)
+            'entites' => $entitesList,
+
+            'derniere_connexion' => $user->derniere_connexion,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at
+        ];
+    }
+
     protected function respondWithToken($token): JsonResponse
     {
         $user = auth('api')->user();
+        $user->load('entites');
 
         return response()->json([
             'success' => true,
             'data' => [
-                'user' => [
-                    'id' => $user->id,
-                    'nom' => $user->nom,
-                    'prenom' => $user->prenom,
-                    'username' => $user->username,
-                    'email' => $user->email,
-                    'profil' => $user->profil,
-                    'entite_id' => $user->entite_id,
-                    'statut' => $user->statut,
-                    'telephone' => $user->telephone,
-                    'entite' => [
-                        'id' => $user->entite?->id,
-                        'nom' => $user->entite?->nom
-                    ]
-                ],
-
+                'user' => $this->formatUserWithEntities($user),
                 'tokens' => [
                     'access_token' => $token,
                     'token_type' => 'Bearer',
@@ -211,4 +179,8 @@ class AuthController extends Controller
             ], 500);
         }
     }
+
+
+
+
 }

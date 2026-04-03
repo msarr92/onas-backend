@@ -17,120 +17,125 @@ class UserController extends Controller
     /**
      * Liste des utilisateurs avec statut en ligne et dernière connexion
      */
-  public function ListUsers(Request $request): JsonResponse
-{
-    try {
+    public function ListUsers(Request $request): JsonResponse
+    {
+        try {
 
-        $user = auth('api')->user();
+            $user = auth('api')->user();
 
-        if (!$user) {
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non authentifié.'
+                ], 401);
+            }
+
+            $query = User::with([
+                'entites:id,nom'
+            ])
+                ->select(
+                    'id',
+                    'nom',
+                    'prenom',
+                    'username',
+                    'email',
+                    'telephone',
+                    'profil',
+                    'statut',
+                    'created_at',
+                    'derniere_connexion'
+                );
+
+            $perPage = $request->get('per_page', 5);
+
+            $users = $query
+                ->orderBy('created_at', 'desc')
+                ->paginate($perPage);
+
+            // récupérer les profils existants
+            $profils = User::select('profil')
+                ->distinct()
+                ->pluck('profil');
+
+            // récupérer les utilisateurs dlgas
+            $usersDlga = User::with('entites:id,nom')
+                ->select(
+                    'id',
+                    'nom',
+                    'prenom',
+                    'username',
+                    'email'
+                )
+                ->where('profil', 'consultation')
+                ->get();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Liste des utilisateurs récupérée avec succès.',
+                'data' => [
+                    'users' => $users,
+                    'profils' => $profils,
+                    'users_dlgas' => $usersDlga
+                ]
+            ]);
+        } catch (Throwable $e) {
+
             return response()->json([
                 'success' => false,
-                'message' => 'Utilisateur non authentifié.'
-            ], 401);
+                'message' => 'Erreur lors de la récupération des utilisateurs.',
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ], 500);
         }
-
-        $query = User::with([
-            'entites:id,nom'
-        ])
-        ->select(
-            'id',
-            'nom',
-            'prenom',
-            'username',
-            'email',
-            'telephone',
-            'profil',
-            'statut',
-            'created_at',
-            'derniere_connexion'
-        );
-
-        $perPage = $request->get('per_page', 5);
-
-        $users = $query
-            ->orderBy('created_at', 'desc')
-            ->paginate($perPage);
-
-        // récupérer les profils existants
-        $profils = User::select('profil')
-            ->distinct()
-            ->pluck('profil');
-
-        // récupérer les utilisateurs dlgas
-        $usersDlga = User::with('entites:id,nom')
-            ->select(
-                'id',
-                'nom',
-                'prenom',
-                'username',
-                'email'
-            )
-            ->where('profil', 'consultation')
-            ->get();
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Liste des utilisateurs récupérée avec succès.',
-            'data' => [
-                'users' => $users,
-                'profils' => $profils,
-                'users_dlgas' => $usersDlga
-            ]
-        ]);
-
-    } catch (Throwable $e) {
-
-        return response()->json([
-            'success' => false,
-            'message' => 'Erreur lors de la récupération des utilisateurs.',
-            'error' => $e->getMessage(),
-            'file' => $e->getFile(),
-            'line' => $e->getLine()
-        ], 500);
     }
-}
 
 
 
     /**
-     * Récupérer un utilisateur spécifique
-     */
-    public function showUsers($id)
-    {
-        try {
-            $user = User::select(
+ * Récupérer un utilisateur spécifique
+ */
+public function showUsers($id)
+{
+    try {
+        // Charger l'utilisateur avec ses entités (many-to-many)
+        $user = User::with(['entites' => function($query) {
+                $query->select('entites.id', 'entites.nom');
+            }])
+            ->select(
                 'id',
                 'nom',
                 'prenom',
                 'username',
                 'email',
                 'profil',
-                'entite_id',
+                'telephone',
                 'created_at',
+                'updated_at',
                 'derniere_connexion',
                 'statut'
-            )->find($id);
+            )
+            ->find($id);
 
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Utilisateur non trouvé'
-                ], 404);
-            }
-
-            return response()->json([
-                'success' => true,
-                'data' => $user
-            ], 200);
-        } catch (\Exception $e) {
+        if (!$user) {
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la récupération de l\'utilisateur',
-                'error' => $e->getMessage()
-            ], 500);
+                'message' => 'Utilisateur non trouvé'
+            ], 404);
         }
+
+        return response()->json([
+            'success' => true,
+            'data' => $user
+        ], 200);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur lors de la récupération de l\'utilisateur',
+            'error' => $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Mettre à jour le statut d'un utilisateur
@@ -254,8 +259,9 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:6|confirmed',
             'profil' => 'required|string',
-            'entite_id' => 'required|exists:entites,id',
-            'telephone' => 'nullable|string',
+            'entites' => 'required|array',              // tableau d'entite_id
+            'entites.*' => 'exists:entites,id',        // chaque id doit exister
+            'telephone' => 'required|string',
         ]);
 
         if ($validator->fails()) {
@@ -266,6 +272,8 @@ class UserController extends Controller
         }
 
         try {
+            $defaultEntiteId = $request->entites[0] ?? null;
+
             $user = User::create([
                 'nom' => $request->nom,
                 'prenom' => $request->prenom,
@@ -273,10 +281,13 @@ class UserController extends Controller
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
                 'profil' => $request->profil,
-                'entite_id' => $request->entite_id,
                 'telephone' => $request->telephone,
                 'statut' => 'actif',
+                'entite_id' => $defaultEntiteId, // ← Ajouter cette ligne
             ]);
+
+            // 🔹 Associer les entités via la table pivot
+            $user->entites()->sync($request->entites);
 
             return response()->json([
                 'success' => true,
@@ -542,8 +553,62 @@ class UserController extends Controller
         }
     }
 
+    public function supprimerUtilisateur($id): JsonResponse
+    {
+        try {
+            $authUser = auth('api')->user();
 
+            if (!$authUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non authentifié.'
+                ], 401);
+            }
 
+            $user = User::find($id);
 
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur introuvable.'
+                ], 404);
+            }
+
+            //  Empêcher suppression de soi-même (bonne pratique)
+            if ($authUser->id == $user->id) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Vous ne pouvez pas supprimer votre propre compte.'
+                ], 403);
+            }
+
+            DB::beginTransaction();
+
+            //  Supprimer les relations avec entités (pivot)
+            $user->entites()->detach();
+
+            //  Supprimer les notifications liées (optionnel mais recommandé)
+            $user->notifications()->delete();
+
+            //  Supprimer l'utilisateur
+            $user->delete();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Utilisateur supprimé avec succès.'
+            ]);
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la suppression de l’utilisateur.',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
 
 }
