@@ -20,15 +20,21 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->timestamp('derniere_connexion')->nullable();
-             $table->enum('profil', [
-                                        'superadmin',
-                                        'selfservice',
-                                        'backoffice',
-                                        'consultation'
-                                    ]);
-             // Relation directe avec Entité
-             $table->foreignId('entite_id')->constrained('entites');
-             //$table->foreignId('entite_id')->nullable()->constrained()->nullOnDelete();
+            $table->enum('profil', [
+                'superadmin',
+                'admin_selfservice',
+                'selfservice',
+                'admin_backoffice',
+                'backoffice',
+                'admin_dlgas',
+                'dlgas',
+            ]);
+            // Relation directe avec Entité
+            $table->foreignId('entite_id')
+                ->nullable()
+                ->constrained('entites')
+                ->nullOnDelete();
+            // $table->foreignId('entite_id')->nullable()->constrained()->nullOnDelete();
             $table->rememberToken();
             $table->timestamps();
         });

@@ -28,7 +28,7 @@ class User extends Authenticatable implements JWTSubject
         'derniere_connexion',
         'entite_id',
         'statut',
-        'telephone'
+        'telephone',
     ];
 
     /**
@@ -54,7 +54,6 @@ class User extends Authenticatable implements JWTSubject
         ];
     }
 
-
     public function entites()
     {
         return $this->belongsToMany(Entites::class, 'entite_user', 'user_id', 'entite_id')->withTimestamps();
@@ -63,6 +62,11 @@ class User extends Authenticatable implements JWTSubject
     public function tickets()
     {
         return $this->hasMany(Tickets::class);
+    }
+
+    public function ticketsAssignes()
+    {
+        return $this->hasMany(Tickets::class, 'assigne_id');
     }
 
     public function discussions()
@@ -80,10 +84,10 @@ class User extends Authenticatable implements JWTSubject
      */
     public function dlgas()
     {
-        return $this->belongsTo(User::class, 'dlgas', 'id');
+        return $this->belongsTo(User::class, 'dlgas_id');
     }
 
-     // Relation one-to-many (si vous gardez entite_id)
+    // Relation one-to-many (si vous gardez entite_id)
     public function entite()
     {
         return $this->belongsTo(Entites::class, 'entite_id');

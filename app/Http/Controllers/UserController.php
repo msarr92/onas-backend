@@ -4,12 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Throwable;
 
 class UserController extends Controller
@@ -23,15 +23,15 @@ class UserController extends Controller
 
             $user = auth('api')->user();
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur non authentifié.'
+                    'message' => 'Utilisateur non authentifié.',
                 ], 401);
             }
 
             $query = User::with([
-                'entites:id,nom'
+                'entites:id,nom',
             ])
                 ->select(
                     'id',
@@ -75,8 +75,8 @@ class UserController extends Controller
                 'data' => [
                     'users' => $users,
                     'profils' => $profils,
-                    'users_dlgas' => $usersDlga
-                ]
+                    'users_dlgas' => $usersDlga,
+                ],
             ]);
         } catch (Throwable $e) {
 
@@ -85,57 +85,55 @@ class UserController extends Controller
                 'message' => 'Erreur lors de la récupération des utilisateurs.',
                 'error' => $e->getMessage(),
                 'file' => $e->getFile(),
-                'line' => $e->getLine()
+                'line' => $e->getLine(),
             ], 500);
         }
     }
 
-
-
     /**
- * Récupérer un utilisateur spécifique
- */
-public function showUsers($id)
-{
-    try {
-        // Charger l'utilisateur avec ses entités (many-to-many)
-        $user = User::with(['entites' => function($query) {
+     * Récupérer un utilisateur spécifique
+     */
+    public function showUsers($id)
+    {
+        try {
+            // Charger l'utilisateur avec ses entités (many-to-many)
+            $user = User::with(['entites' => function ($query) {
                 $query->select('entites.id', 'entites.nom');
             }])
-            ->select(
-                'id',
-                'nom',
-                'prenom',
-                'username',
-                'email',
-                'profil',
-                'telephone',
-                'created_at',
-                'updated_at',
-                'derniere_connexion',
-                'statut'
-            )
-            ->find($id);
+                ->select(
+                    'id',
+                    'nom',
+                    'prenom',
+                    'username',
+                    'email',
+                    'profil',
+                    'telephone',
+                    'created_at',
+                    'updated_at',
+                    'derniere_connexion',
+                    'statut'
+                )
+                ->find($id);
 
-        if (!$user) {
+            if (! $user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non trouvé',
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'data' => $user,
+            ], 200);
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Utilisateur non trouvé'
-            ], 404);
+                'message' => 'Erreur lors de la récupération de l\'utilisateur',
+                'error' => $e->getMessage(),
+            ], 500);
         }
-
-        return response()->json([
-            'success' => true,
-            'data' => $user
-        ], 200);
-    } catch (\Exception $e) {
-        return response()->json([
-            'success' => false,
-            'message' => 'Erreur lors de la récupération de l\'utilisateur',
-            'error' => $e->getMessage()
-        ], 500);
     }
-}
 
     /**
      * Mettre à jour le statut d'un utilisateur
@@ -144,15 +142,15 @@ public function showUsers($id)
     {
         try {
             $request->validate([
-                'statut' => 'required|in:actif,inactif,bloque'
+                'statut' => 'required|in:actif,inactif,bloque',
             ]);
 
             $user = User::find($id);
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur non trouvé'
+                    'message' => 'Utilisateur non trouvé',
                 ], 404);
             }
 
@@ -164,14 +162,14 @@ public function showUsers($id)
                 'message' => 'Statut mis à jour avec succès',
                 'data' => [
                     'id' => $user->id,
-                    'statut' => $user->statut
-                ]
+                    'statut' => $user->statut,
+                ],
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la mise à jour du statut',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -184,10 +182,10 @@ public function showUsers($id)
         try {
             $user = User::find($id);
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur non trouvé'
+                    'message' => 'Utilisateur non trouvé',
                 ], 404);
             }
 
@@ -195,13 +193,13 @@ public function showUsers($id)
 
             return response()->json([
                 'success' => true,
-                'message' => 'Utilisateur supprimé avec succès'
+                'message' => 'Utilisateur supprimé avec succès',
             ], 200);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la suppression de l\'utilisateur',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -239,66 +237,181 @@ public function showUsers($id)
                     'admins' => $admins,
                     'backoffice' => $backoffice,
                     'selfservice' => $selfservice,
-                ]
+                ],
             ]);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des statistiques.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
-    public function ajouterUtilisateur(Request $request): JsonResponse
+    public function ajouterUtilisateur(Request $request): JsonResponse 
     {
+        // ============================================================
+        // 1. Validation des données
+        // ============================================================
+
         $validator = Validator::make($request->all(), [
-            'nom' => 'required|string|max:255',
-            'prenom' => 'required|string|max:255',
-            'username' => 'required|string|unique:users,username',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
-            'profil' => 'required|string',
-            'entites' => 'required|array',              // tableau d'entite_id
-            'entites.*' => 'exists:entites,id',        // chaque id doit exister
-            'telephone' => 'required|string',
+
+            'nom' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'prenom' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'username' => [
+                'required',
+                'string',
+                'max:255',
+                'unique:users,username',
+            ],
+
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                'unique:users,email',
+            ],
+
+            'password' => [
+                'required',
+                'string',
+                'min:6',
+                'confirmed',
+            ],
+
+            'profil' => [
+                'required',
+                'in:superadmin,selfservice,backoffice,dlgas,admin_selfservice,admin_backoffice,admin_dlgas',
+            ],
+
+            'entites' => [
+                'required',
+                'array',
+                'min:1',
+            ],
+
+            'entites.*' => [
+                'required',
+                'integer',
+                'exists:entites,id',
+            ],
+
+            'telephone' => [
+                'required',
+                'string',
+                'max:30',
+            ],
         ]);
 
+        // ============================================================
+        // 2. Vérifier les erreurs
+        // ============================================================
+
         if ($validator->fails()) {
+
             return response()->json([
                 'success' => false,
-                'errors' => $validator->errors()
+                'message' => 'Les données fournies sont invalides.',
+                'errors' => $validator->errors(),
             ], 422);
         }
 
         try {
-            $defaultEntiteId = $request->entites[0] ?? null;
+
+            // ========================================================
+            // 3. Début de la transaction
+            // ========================================================
+
+            DB::beginTransaction();
+
+            // ========================================================
+            // 4. Création de l'utilisateur
+            // ========================================================
 
             $user = User::create([
+
                 'nom' => $request->nom,
+
                 'prenom' => $request->prenom,
+
                 'username' => $request->username,
+
                 'email' => $request->email,
-                'password' => Hash::make($request->password),
+
+                'password' => Hash::make(
+                    $request->password
+                ),
+
+                // Profil choisi dans le formulaire
                 'profil' => $request->profil,
+
                 'telephone' => $request->telephone,
+
                 'statut' => 'actif',
-                'entite_id' => $defaultEntiteId, // ← Ajouter cette ligne
             ]);
 
-            // 🔹 Associer les entités via la table pivot
-            $user->entites()->sync($request->entites);
+            // ========================================================
+            // 5. Association aux entités
+            // ========================================================
+
+            $user->entites()->sync(
+                $request->entites
+            );
+
+            // ========================================================
+            // 6. Valider la transaction
+            // ========================================================
+
+            DB::commit();
+
+            // ========================================================
+            // 7. Charger les entités dans la réponse
+            // ========================================================
+
+            $user->load([
+                'entites:id,nom',
+            ]);
+
+            // ========================================================
+            // 8. Réponse
+            // ========================================================
 
             return response()->json([
+
                 'success' => true,
+
+                'message' => 'Utilisateur créé avec succès.',
+
                 'data' => $user,
-                'message' => 'Utilisateur créé avec succès'
+
             ], 201);
-        } catch (\Exception $e) {
+
+        } catch (\Throwable $e) {
+
+            // ========================================================
+            // 9. Annuler la transaction en cas d'erreur
+            // ========================================================
+
+            DB::rollBack();
+
             return response()->json([
+
                 'success' => false,
-                'message' => 'Erreur lors de la création',
-                'error' => $e->getMessage()
+
+                'message' => 'Erreur lors de la création de l’utilisateur.',
+
+                'error' => $e->getMessage(),
+
             ], 500);
         }
     }
@@ -309,10 +422,10 @@ public function showUsers($id)
 
             $user = User::with('entite')->find($id);
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur non trouvé.'
+                    'message' => 'Utilisateur non trouvé.',
                 ], 404);
             }
 
@@ -334,80 +447,212 @@ public function showUsers($id)
                     ],
                     'derniere_connexion' => $user->derniere_connexion,
                     'created_at' => $user->created_at,
-                    'updated_at' => $user->updated_at
-                ]
+                    'updated_at' => $user->updated_at,
+                ],
             ]);
         } catch (\Throwable $e) {
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la récupération des détails utilisateur.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
     public function modifierUtilisateur(Request $request, int $id): JsonResponse
     {
-        $user = User::find($id);
-
-        if (!$user) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Utilisateur non trouvé.'
-            ], 404);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'nom' => 'sometimes|required|string|max:255',
-            'prenom' => 'sometimes|required|string|max:255',
-            'telephone' => 'sometimes|string|max:20',
-            'profil' => 'sometimes|required|in:superadmin,selfservice,backoffice,consultation',
-            'entite_id' => 'sometimes|required|exists:entites,id',
-            'statut' => 'sometimes|required|in:actif,inactif',
-            'password' => 'nullable|string|min:6|confirmed'
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         try {
 
-            // Mise à jour des champs modifiables
-            if ($request->has('nom')) {
+            $authUser = auth('api')->user();
+
+            if (! $authUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non authentifié.',
+                ], 401);
+            }
+
+            // Seuls les administrateurs peuvent modifier
+            if (! in_array($authUser->profil, [
+                'superadmin',
+                // 'admin_selfservice',
+                // 'admin_backoffice',
+                // 'admin_dlgas'
+            ])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Accès refusé.',
+                ], 403);
+            }
+
+            $user = User::find($id);
+
+            if (! $user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Utilisateur non trouvé.',
+                ], 404);
+            }
+
+            $validator = Validator::make($request->all(), [
+
+                'nom' => 'sometimes|required|string|max:255',
+
+                'prenom' => 'sometimes|required|string|max:255',
+
+                'telephone' => 'sometimes|nullable|string|max:20',
+
+                'username' => [
+                    'sometimes',
+                    'required',
+                    'string',
+                    Rule::unique('users', 'username')->ignore($user->id),
+                ],
+
+                'profil' => [
+                    'sometimes',
+                    'required',
+                    Rule::in([
+                        'superadmin',
+                        'selfservice',
+                        'backoffice',
+                        'consultation',
+                        'dlgas',
+                        'admin_selfservice',
+                        'admin_backoffice',
+                        'admin_dlgas',
+                    ]),
+                ],
+
+                // tableau des entités
+                'entites' => 'nullable|array',
+
+                'entites.*' => 'exists:entites,id',
+
+                'statut' => 'sometimes|required|in:actif,inactif',
+
+                'password' => 'nullable|string|min:6|confirmed',
+
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Vérification SuperAdmin
+            |--------------------------------------------------------------------------
+            */
+
+            $profil = $request->profil ?? $user->profil;
+
+            if ($profil !== 'superadmin') {
+
+                if (
+                    ! $request->has('entites') &&
+                    empty($user->entite_id)
+                ) {
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Une entité est obligatoire pour ce profil.',
+                    ], 422);
+                }
+
+                if (
+                    $request->has('entites') &&
+                    count($request->entites) == 0
+                ) {
+
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Une entité est obligatoire pour ce profil.',
+                    ], 422);
+                }
+            }
+
+            /*
+            |--------------------------------------------------------------------------
+            | Mise à jour
+            |--------------------------------------------------------------------------
+            */
+
+            if ($request->filled('nom')) {
                 $user->nom = $request->nom;
             }
 
-            if ($request->has('prenom')) {
+            if ($request->filled('prenom')) {
                 $user->prenom = $request->prenom;
+            }
+
+            if ($request->filled('username')) {
+                $user->username = $request->username;
             }
 
             if ($request->has('telephone')) {
                 $user->telephone = $request->telephone;
             }
 
-            if ($request->has('profil')) {
+            if ($request->filled('profil')) {
                 $user->profil = $request->profil;
             }
 
-            if ($request->has('entite_id')) {
-                $user->entite_id = $request->entite_id;
-            }
-
-            if ($request->has('statut')) {
+            if ($request->filled('statut')) {
                 $user->statut = $request->statut;
             }
 
-            // Mot de passe (optionnel)
             if ($request->filled('password')) {
                 $user->password = Hash::make($request->password);
             }
 
-            $user->save();
+            /*
+            |--------------------------------------------------------------------------
+            | Gestion des entités
+            |--------------------------------------------------------------------------
+            */
+
+            if ($request->has('entites')) {
+
+                if ($profil == 'superadmin') {
+
+                    // un superadmin peut ne pas avoir d'entité
+                    if (count($request->entites) > 0) {
+
+                        $user->entite_id = $request->entites[0];
+
+                        $user->save();
+
+                        $user->entites()->sync($request->entites);
+
+                    } else {
+
+                        $user->entite_id = null;
+
+                        $user->save();
+
+                        $user->entites()->detach();
+                    }
+
+                } else {
+
+                    $user->entite_id = $request->entites[0];
+
+                    $user->save();
+
+                    $user->entites()->sync($request->entites);
+                }
+
+            } else {
+
+                $user->save();
+            }
+
+            $user->load('entites');
 
             return response()->json([
                 'success' => true,
@@ -422,16 +667,26 @@ public function showUsers($id)
                     'profil' => $user->profil,
                     'statut' => $user->statut,
                     'entite_id' => $user->entite_id,
-                    'updated_at' => $user->updated_at
-                ]
+                    'entites' => $user->entites->map(function ($entite) {
+                        return [
+                            'id' => $entite->id,
+                            'nom' => $entite->nom,
+                        ];
+                    }),
+                    'updated_at' => $user->updated_at,
+                ],
             ]);
-        } catch (Throwable $e) {
+
+        } catch (\Throwable $e) {
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la modification.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
             ], 500);
+
         }
     }
 
@@ -441,15 +696,15 @@ public function showUsers($id)
 
             $user = User::find($id);
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur non trouvé.'
+                    'message' => 'Utilisateur non trouvé.',
                 ], 404);
             }
 
             $user->update([
-                'statut' => 'actif'
+                'statut' => 'actif',
             ]);
 
             return response()->json([
@@ -457,15 +712,15 @@ public function showUsers($id)
                 'message' => 'Utilisateur activé avec succès.',
                 'data' => [
                     'id' => $user->id,
-                    'statut' => $user->statut
-                ]
+                    'statut' => $user->statut,
+                ],
             ]);
         } catch (\Throwable $e) {
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'activation.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -476,15 +731,15 @@ public function showUsers($id)
 
             $user = User::find($id);
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur non trouvé.'
+                    'message' => 'Utilisateur non trouvé.',
                 ], 404);
             }
 
             $user->update([
-                'statut' => 'inactif'
+                'statut' => 'inactif',
             ]);
 
             return response()->json([
@@ -492,63 +747,153 @@ public function showUsers($id)
                 'message' => 'Utilisateur désactivé avec succès.',
                 'data' => [
                     'id' => $user->id,
-                    'statut' => $user->statut
-                ]
+                    'statut' => $user->statut,
+                ],
             ]);
         } catch (\Throwable $e) {
 
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la désactivation.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
 
-
     public function ajouterDlgas(Request $request): JsonResponse
     {
-        $validator = Validator::make($request->all(), [
-            'nom' => 'required|string|max:255',
-            'prenom' => 'required|string|max:255',
-            'username' => 'required|string|unique:users,username',
-            'email' => 'required|email|unique:users,email',
-            'password' => 'required|string|min:6|confirmed',
-            // 'profil' => 'required|string',
-            'entite_id' => 'required|exists:entites,id',
-            'telephone' => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'errors' => $validator->errors()
-            ], 422);
-        }
-
         try {
-            $user = User::create([
-                'nom' => $request->nom,
-                'prenom' => $request->prenom,
-                'username' => $request->username,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'profil' => 'consultation',
-                'entite_id' => $request->entite_id,
-                'telephone' => $request->telephone,
-                'statut' => 'actif',
+
+            // ============================================================
+            // 1. Validation des données reçues
+            // ============================================================
+
+            $validator = Validator::make($request->all(), [
+
+                'nom' => [
+                    'required',
+                    'string',
+                    'max:255',
+                ],
+
+                'prenom' => [
+                    'required',
+                    'string',
+                    'max:255',
+                ],
+
+                'username' => [
+                    'required',
+                    'string',
+                    'max:255',
+                    'unique:users,username',
+                ],
+
+                'email' => [
+                    'required',
+                    'email',
+                    'max:255',
+                    'unique:users,email',
+                ],
+
+                'password' => [
+                    'required',
+                    'string',
+                    'min:6',
+                    'confirmed',
+                ],
+
+                'telephone' => [
+                    'nullable',
+                    'string',
+                    'max:30',
+                ],
             ]);
+
+            // ============================================================
+            // 2. Vérifier les erreurs de validation
+            // ============================================================
+
+            if ($validator->fails()) {
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Les données fournies sont invalides.',
+                    'errors' => $validator->errors(),
+                ], 422);
+            }
+
+            // ============================================================
+            // 3. Création de l'utilisateur
+            // ============================================================
+
+            $user = User::create([
+
+                'nom' => $request->nom,
+
+                'prenom' => $request->prenom,
+
+                'username' => $request->username,
+
+                'email' => $request->email,
+
+                'password' => Hash::make(
+                    $request->password
+                ),
+
+                // Le profil est imposé par cette fonction
+                'profil' => 'dlgas',
+
+                'telephone' => $request->telephone,
+
+                'statut' => 'actif',
+
+                'entite_id' => null,
+            ]);
+
+            // ============================================================
+            // 4. Association de l'utilisateur à son entité
+            // ============================================================
+
+            $user->entites()->attach(
+                $request->entite_id
+            );
+
+            // ============================================================
+            // 5. Charger les informations utiles dans la réponse
+            // ============================================================
+
+            $user->load([
+                'entites:id,nom',
+            ]);
+
+            // ============================================================
+            // 6. Réponse
+            // ============================================================
 
             return response()->json([
                 'success' => true,
+
+                'message' => 'Utilisateur DLGAS créé avec succès.',
+
                 'data' => $user,
-                'message' => 'Utilisateur créé avec succès'
+
             ], 201);
-        } catch (\Exception $e) {
+
+        } catch (\Throwable $e) {
+
+            // ============================================================
+            // 7. Gestion des erreurs
+            // ============================================================
+
             return response()->json([
+
                 'success' => false,
-                'message' => 'Erreur lors de la création',
-                'error' => $e->getMessage()
+
+                'message' => 'Une erreur est survenue lors de la création de l’utilisateur DLGAS.',
+
+                'error' => $e->getMessage(),
+
             ], 500);
         }
     }
@@ -558,19 +903,19 @@ public function showUsers($id)
         try {
             $authUser = auth('api')->user();
 
-            if (!$authUser) {
+            if (! $authUser) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur non authentifié.'
+                    'message' => 'Utilisateur non authentifié.',
                 ], 401);
             }
 
             $user = User::find($id);
 
-            if (!$user) {
+            if (! $user) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Utilisateur introuvable.'
+                    'message' => 'Utilisateur introuvable.',
                 ], 404);
             }
 
@@ -578,7 +923,7 @@ public function showUsers($id)
             if ($authUser->id == $user->id) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Vous ne pouvez pas supprimer votre propre compte.'
+                    'message' => 'Vous ne pouvez pas supprimer votre propre compte.',
                 ], 403);
             }
 
@@ -597,7 +942,7 @@ public function showUsers($id)
 
             return response()->json([
                 'success' => true,
-                'message' => 'Utilisateur supprimé avec succès.'
+                'message' => 'Utilisateur supprimé avec succès.',
             ]);
         } catch (\Throwable $e) {
 
@@ -606,9 +951,8 @@ public function showUsers($id)
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la suppression de l’utilisateur.',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
-
 }
